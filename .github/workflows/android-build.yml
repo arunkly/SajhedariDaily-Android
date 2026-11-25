@@ -56,6 +56,18 @@ jobs:
           unzip -q SajhedariDaily-Android-Phase8-EPAPER-INTEGRATION.zip -d build-source
           test -f build-source/SajhedariDaily-Android-Phase1/settings.gradle.kts
 
+      - name: Patch Kotlin DSL java.util name collision
+        working-directory: build-source/SajhedariDaily-Android-Phase1
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace('plugins {', 'import java.util.Properties\n\nplugins {', 1)
+          s = s.replace('java.util.Properties()', 'Properties()')
+          p.write_text(s)
+          PY
+
       - name: Build debug APK
         working-directory: build-source/SajhedariDaily-Android-Phase1
         run: gradle --no-daemon :app:assembleDebug
