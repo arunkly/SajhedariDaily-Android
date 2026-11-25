@@ -1,0 +1,57 @@
+name: Sajhedari Daily Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'SajhedariDaily-Android-Phase8-EPAPER-INTEGRATION.zip'
+      - '.github/workflows/android-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Phase 8 project
+        run: |
+          test -f SajhedariDaily-Android-Phase8-EPAPER-INTEGRATION.zip
+          mkdir -p build-source
+          unzip -q SajhedariDaily-Android-Phase8-EPAPER-INTEGRATION.zip -d build-source
+          test -f build-source/SajhedariDaily-Android-Phase1/settings.gradle.kts
+
+      - name: Build debug APK
+        working-directory: build-source/SajhedariDaily-Android-Phase1
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SajhedariDaily-debug-apk
+          path: build-source/SajhedariDaily-Android-Phase1/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
