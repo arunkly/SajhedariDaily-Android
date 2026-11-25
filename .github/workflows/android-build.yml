@@ -116,7 +116,7 @@ jobs:
                   window.decorView.post {
                       val crashFile = java.io.File(filesDir, "sajhedari-last-crash.txt")
                       if (crashFile.exists()) {
-                          androidx.appcompat.app.AlertDialog.Builder(this)
+                          android.app.AlertDialog.Builder(this)
                               .setTitle("Sajhedari Daily crash report")
                               .setMessage("The previous app session stopped unexpectedly. Share the diagnostic report so the issue can be fixed.")
                               .setPositiveButton("Share report") { _, _ ->
