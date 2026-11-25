@@ -112,8 +112,7 @@ jobs:
           activity = pkg / "MainActivity.kt"
           s = activity.read_text()
           old = '        setContent { SajhedariTheme { SajhedariApp() } }'
-          new = '''        setContent { SajhedariTheme { SajhedariApp() } }
-                  window.decorView.post {
+          new = '''        window.decorView.post {
                       val crashFile = java.io.File(filesDir, "sajhedari-last-crash.txt")
                       if (crashFile.exists()) {
                           android.app.AlertDialog.Builder(this)
@@ -131,7 +130,8 @@ jobs:
                               .setNegativeButton("Not now") { _, _ -> crashFile.delete() }
                               .show()
                       }
-                  }'''
+                  }
+                  setContent { SajhedariTheme { SajhedariApp() } }'''
           if old not in s:
               raise SystemExit("Could not find MainActivity setContent insertion point")
           activity.write_text(s.replace(old, new, 1))
