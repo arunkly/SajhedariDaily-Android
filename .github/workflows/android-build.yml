@@ -68,6 +68,75 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Install on-device crash diagnostics
+        working-directory: build-source/SajhedariDaily-Android-Phase1
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          base = Path("app/src/main")
+          pkg = base / "java/com/sajhedaridaily/news"
+          pkg.mkdir(parents=True, exist_ok=True)
+          (pkg / "SajhedariApplication.kt").write_text("""package com.sajhedaridaily.news
+
+          import android.app.Application
+          import android.os.Process
+          import java.io.File
+          import java.util.Date
+          import kotlin.system.exitProcess
+
+          class SajhedariApplication : Application() {
+              override fun onCreate() {
+                  super.onCreate()
+                  val previous = Thread.getDefaultUncaughtExceptionHandler()
+                  Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+                      try {
+                          File(filesDir, "sajhedari-last-crash.txt").writeText(
+                              "Sajhedari Daily crash report\\nTime: ${Date()}\\nThread: ${thread.name}\\n\\n" +
+                                  error.stackTraceToString()
+                          )
+                      } catch (_: Exception) { }
+                      if (previous != null) previous.uncaughtException(thread, error)
+                      else {
+                          Process.killProcess(Process.myPid())
+                          exitProcess(10)
+                      }
+                  }
+              }
+          }
+          """)
+          manifest = base / "AndroidManifest.xml"
+          m = manifest.read_text()
+          m = m.replace('<application', '<application android:name=".SajhedariApplication"', 1)
+          manifest.write_text(m)
+
+          activity = pkg / "MainActivity.kt"
+          s = activity.read_text()
+          old = '        setContent { SajhedariTheme { SajhedariApp() } }'
+          new = '''        setContent { SajhedariTheme { SajhedariApp() } }
+                  window.decorView.post {
+                      val crashFile = java.io.File(filesDir, "sajhedari-last-crash.txt")
+                      if (crashFile.exists()) {
+                          androidx.appcompat.app.AlertDialog.Builder(this)
+                              .setTitle("Sajhedari Daily crash report")
+                              .setMessage("The previous app session stopped unexpectedly. Share the diagnostic report so the issue can be fixed.")
+                              .setPositiveButton("Share report") { _, _ ->
+                                  val share = Intent(Intent.ACTION_SEND).apply {
+                                      type = "text/plain"
+                                      putExtra(Intent.EXTRA_SUBJECT, "Sajhedari Daily crash report")
+                                      putExtra(Intent.EXTRA_TEXT, crashFile.readText())
+                                  }
+                                  startActivity(Intent.createChooser(share, "Send crash report"))
+                                  crashFile.delete()
+                              }
+                              .setNegativeButton("Not now") { _, _ -> crashFile.delete() }
+                              .show()
+                      }
+                  }'''
+          if old not in s:
+              raise SystemExit("Could not find MainActivity setContent insertion point")
+          activity.write_text(s.replace(old, new, 1))
+          PY
+
       - name: Build debug APK
         working-directory: build-source/SajhedariDaily-Android-Phase1
         run: gradle --no-daemon :app:assembleDebug
